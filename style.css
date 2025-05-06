@@ -1,0 +1,41 @@
+body {
+  font-family: Arial, sans-serif;
+  background: #f0f0f0;
+  margin: 0;
+  padding: 20px;
+}
+
+.container {
+  max-width: 700px;
+  margin: auto;
+  background: #fff;
+  padding: 25px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
+
+h1, h2 {
+  text-align: center;
+}
+
+button {
+  padding: 10px 20px;
+  margin-top: 20px;
+  background-color: crimson;
+  color: white;
+  border: none;
+  cursor: pointer;
+}
+
+button:hover {
+  background-color: darkred;
+}
+
+.question {
+  margin-bottom: 20px;
+}
+
+.credit {
+  text-align: center;
+  margin-top: 20px;
+  font-style: italic;
+}
