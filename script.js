@@ -1,7 +1,7 @@
-// Firebase setup
-import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
-import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getDatabase, ref, update } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
+// Firebase config Anda
 const firebaseConfig = {
   apiKey: "AIzaSyBr0SJYDWMkEnKHu-oHZFBJjz3IjhKXtdw",
   authDomain: "praktek-ts-mts.firebaseapp.com",
@@ -10,137 +10,120 @@ const firebaseConfig = {
   messagingSenderId: "256342176188",
   appId: "1:256342176188:web:700dc0e1226a71d89f3bb9"
 };
+
 const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+const db = getDatabase(app);
 
-// Data siswa dan soal
-import { studentNames, soalAIK } from "./data.js";
-
-const nameSelect = document.getElementById("student-name");
+// Ambil elemen
 const startBtn = document.getElementById("start-btn");
+const studentSelect = document.getElementById("student-name");
 const quizContainer = document.getElementById("quiz-container");
-const soalContainer = document.getElementById("questions");
+const questionsDiv = document.getElementById("questions");
 const submitBtn = document.getElementById("submit-btn");
-const scoreContainer = document.getElementById("score");
+const scoreDiv = document.getElementById("score");
 
-let currentPage = 0;
-let userAnswers = {};
-let cheatingDetected = false;
-
-// Isi dropdown nama
-studentNames.forEach(name => {
+// Load nama siswa
+namaSiswa.forEach(nama => {
   const opt = document.createElement("option");
-  opt.value = name;
-  opt.textContent = name;
-  nameSelect.appendChild(opt);
+  opt.value = nama;
+  opt.textContent = nama;
+  studentSelect.appendChild(opt);
 });
 
-// Anti-cheating logic
-let hasBlurred = false;
+// Variabel soal
+let currentPage = 0;
+const questionsPerPage = 10;
+let totalCorrect = 0;
+let hasCheated = false;
+
+// Anti-cheating
+let lostFocusCount = 0;
 window.onblur = () => {
-  if (!hasBlurred) {
-    hasBlurred = true;
-    cheatingDetected = true;
-    alert("Kamu meninggalkan halaman. Nilai langsung 0.");
-    endQuiz();
+  lostFocusCount++;
+  if (lostFocusCount >= 1 && !hasCheated) {
+    hasCheated = true;
+    alert("Anda meninggalkan halaman. Nilai Anda menjadi 0.");
   }
 };
-document.addEventListener("visibilitychange", () => {
-  if (document.hidden && !hasBlurred) {
-    hasBlurred = true;
-    cheatingDetected = true;
-    alert("Kamu beralih tab. Nilai langsung 0.");
-    endQuiz();
-  }
-});
 
-startBtn.addEventListener("click", () => {
-  if (nameSelect.value === "") {
-    alert("Pilih nama dulu.");
-    return;
+// Acak soal
+function shuffleArray(array) {
+  return array.sort(() => Math.random() - 0.5);
+}
+const soal = shuffleArray(soalAIK); // soalAIK dari data.js
+
+// Tampilkan soal per halaman
+function showQuestions(page) {
+  questionsDiv.innerHTML = "";
+  const start = page * questionsPerPage;
+  const end = Math.min(start + questionsPerPage, soal.length);
+
+  for (let i = start; i < end; i++) {
+    const q = soal[i];
+    const div = document.createElement("div");
+    div.className = "question";
+    div.innerHTML = `
+      <p>${i + 1}. ${q.question}</p>
+      ${q.options.map(opt =>
+        `<label><input type="radio" name="question${i}" value="${opt}"> ${opt}</label><br>`
+      ).join("")}
+    `;
+    questionsDiv.appendChild(div);
   }
+
+  submitBtn.textContent = (end >= soal.length) ? "Selesai" : "Lanjut";
+}
+
+// Hitung jawaban benar
+function countCorrect(page) {
+  const start = page * questionsPerPage;
+  const end = Math.min(start + questionsPerPage, soal.length);
+  let correct = 0;
+
+  for (let i = start; i < end; i++) {
+    const selected = document.querySelector(`input[name="question${i}"]:checked`);
+    if (selected && selected.value === soal[i].answer) {
+      correct++;
+    }
+  }
+
+  return correct;
+}
+
+// Simpan nilai
+function saveScoreToFirebase(name, score) {
+  const userRef = ref(db, `nilai/${name}`);
+  update(userRef, { aik: score });
+}
+
+// Event mulai
+startBtn.onclick = () => {
+  const name = studentSelect.value;
+  if (!name) return alert("Pilih nama terlebih dahulu.");
+
   document.getElementById("start-container").style.display = "none";
   quizContainer.style.display = "block";
-  renderQuestions();
-});
+  showQuestions(currentPage);
+};
 
-submitBtn.addEventListener("click", () => {
-  if ((currentPage + 1) * 10 >= soalAIK.length) {
-    endQuiz();
+// Event submit
+submitBtn.onclick = () => {
+  totalCorrect += countCorrect(currentPage);
+  currentPage++;
+
+  if (currentPage * questionsPerPage >= soal.length) {
+    const score = hasCheated ? 0 : totalCorrect * 2;
+    const name = studentSelect.value;
+    saveScoreToFirebase(name, score);
+
+    quizContainer.style.display = "none";
+    scoreDiv.innerHTML = `
+      <h2>Terima kasih, ${name}!</h2>
+      <p>Jawaban benar: ${totalCorrect} dari ${soal.length}</p>
+      <p>Nilai akhir: ${score}</p>
+    `;
+    scoreDiv.style.display = "block";
   } else {
-    currentPage++;
-    renderQuestions();
+    showQuestions(currentPage);
   }
-});
-
-function renderQuestions() {
-  soalContainer.innerHTML = "";
-  const start = currentPage * 10;
-  const end = start + 10;
-  const questions = soalAIK.slice(start, end);
-
-  questions.forEach((q, index) => {
-    const qIndex = start + index;
-    const qDiv = document.createElement("div");
-    qDiv.className = "question";
-    qDiv.innerHTML = `<p>${qIndex + 1}. ${q.question}</p>`;
-    for (let [key, val] of Object.entries(q.options)) {
-      qDiv.innerHTML += `
-        <label>
-          <input type="radio" name="q${qIndex}" value="${key}">
-          ${key.toUpperCase()}. ${val}
-        </label><br>`;
-    }
-    soalContainer.appendChild(qDiv);
-  });
-}
-
-function submitQuiz() {
-    clearInterval(timerInterval);
-    let correctAnswers = 0;
-    const answers = [
-        "a", "b", "a", "d", "c", "a", "b", "d", "c", "b",
-        "c", "a", "d", "b", "a", "c", "a", "d", "b", "c",
-        "b", "a", "d", "c", "b", "d", "a", "b", "c", "a",
-        "d", "c", "b", "a", "c", "d", "b", "a", "c", "b",
-        "d", "a", "b", "c", "d", "a", "c", "b", "d", "a"
-    ];
-    for (let i = 0; i < answers.length; i++) {
-        const selected = document.querySelector(`input[name="q${i + 1}"]:checked`);
-        if (selected && selected.value === answers[i]) {
-            correctAnswers++;
-        }
-    }
-
-    const score = correctAnswers * 2;
-    const studentName = document.getElementById('studentName').value;
-
-    firebase.database().ref('nilai/' + studentName).update({
-        aik: score
-    });
-
-    document.getElementById('quiz').style.display = 'none';
-    document.getElementById('result').innerHTML = `<h2>Terima kasih telah menyelesaikan kuis!</h2><p>Nilai Anda: ${score}</p>`;
-    document.getElementById('result').style.display = 'block';
-}
-
-function endQuiz() {
-  quizContainer.style.display = "none";
-  let score = 0;
-
-  if (!cheatingDetected) {
-    const inputs = document.querySelectorAll("input[type='radio']:checked");
-    inputs.forEach(input => {
-      const index = parseInt(input.name.substring(1));
-      if (input.value === soalAIK[index].answer) score += 2;
-    });
-  }
-
-  scoreContainer.innerHTML = `Skor: ${score}`;
-  scoreContainer.style.display = "block";
-
-  const studentDoc = doc(db, "nilai", nameSelect.value);
-  setDoc(studentDoc, { AIK: score }, { merge: true })
-    .then(() => console.log("Nilai disimpan"))
-    .catch(err => console.error("Gagal simpan", err));
-}
+};
