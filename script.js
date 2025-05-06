@@ -95,6 +95,35 @@ function renderQuestions() {
   });
 }
 
+function submitQuiz() {
+    clearInterval(timerInterval);
+    let correctAnswers = 0;
+    const answers = [
+        "a", "b", "a", "d", "c", "a", "b", "d", "c", "b",
+        "c", "a", "d", "b", "a", "c", "a", "d", "b", "c",
+        "b", "a", "d", "c", "b", "d", "a", "b", "c", "a",
+        "d", "c", "b", "a", "c", "d", "b", "a", "c", "b",
+        "d", "a", "b", "c", "d", "a", "c", "b", "d", "a"
+    ];
+    for (let i = 0; i < answers.length; i++) {
+        const selected = document.querySelector(`input[name="q${i + 1}"]:checked`);
+        if (selected && selected.value === answers[i]) {
+            correctAnswers++;
+        }
+    }
+
+    const score = correctAnswers * 2;
+    const studentName = document.getElementById('studentName').value;
+
+    firebase.database().ref('nilai/' + studentName).update({
+        aik: score
+    });
+
+    document.getElementById('quiz').style.display = 'none';
+    document.getElementById('result').innerHTML = `<h2>Terima kasih telah menyelesaikan kuis!</h2><p>Nilai Anda: ${score}</p>`;
+    document.getElementById('result').style.display = 'block';
+}
+
 function endQuiz() {
   quizContainer.style.display = "none";
   let score = 0;
