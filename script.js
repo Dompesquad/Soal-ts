@@ -1,132 +1,128 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
-import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-database.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
+import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
 import { studentNames, soalAIK } from "./data.js";
 
-// Firebase config
+// Firebase setup
 const firebaseConfig = {
-  apiKey: "AIzaSyDQ2UCP4tQpAxAlTh2WlUqA7IMaN02ytg0",
+  apiKey: "AIzaSyBr0SJYDWMkEnKHu-oHZFBJjz3IjhKXtdw",
   authDomain: "praktek-ts-mts.firebaseapp.com",
-  databaseURL: "https://praktek-ts-mts-default-rtdb.firebaseio.com",
   projectId: "praktek-ts-mts",
   storageBucket: "praktek-ts-mts.appspot.com",
-  messagingSenderId: "191568130393",
-  appId: "1:191568130393:web:a7aa69e97c17dbf6fa2fe1"
+  messagingSenderId: "256342176188",
+  appId: "1:256342176188:web:700dc0e1226a71d89f3bb9"
 };
-
 const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
+const db = getFirestore(app);
 
-// Elemen DOM
-const startContainer = document.getElementById("start-container");
-const quizContainer = document.getElementById("quiz-container");
-const submitBtn = document.getElementById("submit-btn");
-const questionsDiv = document.getElementById("questions");
-const scoreDiv = document.getElementById("score");
+// Elemen UI
 const nameSelect = document.getElementById("student-name");
-
-// Inisialisasi dropdown nama
-studentNames.forEach(name => {
-  const option = document.createElement("option");
-  option.value = name;
-  option.textContent = name;
-  nameSelect.appendChild(option);
-});
+const startBtn = document.getElementById("start-btn");
+const quizContainer = document.getElementById("quiz-container");
+const soalContainer = document.getElementById("question-container");
+const resultScreen = document.getElementById("result-screen");
+const scoreDisplay = document.getElementById("score");
 
 // Variabel kuis
-let currentIndex = 0;
-let score = 0;
-let selectedName = "";
-let leftPage = false;
+let currentPage = 0;
 let answers = [];
+let selectedStudent = "";
+let hasCheated = false;
 
-// Fungsi tampilkan soal
-function displayQuestions() {
-  questionsDiv.innerHTML = "";
-  const currentQuestions = soalAIK.slice(currentIndex, currentIndex + 10);
-
-  currentQuestions.forEach((soal, index) => {
-    const div = document.createElement("div");
-    div.classList.add("question-block");
-    div.innerHTML = `<p>${currentIndex + index + 1}. ${soal.question}</p>`;
-
-    Object.entries(soal.options).forEach(([key, value]) => {
-      const input = document.createElement("input");
-      input.type = "radio";
-      input.name = `question-${index}`;
-      input.value = key;
-
-      const label = document.createElement("label");
-      label.textContent = value;
-
-      div.appendChild(input);
-      div.appendChild(label);
-      div.appendChild(document.createElement("br"));
-    });
-
-    questionsDiv.appendChild(div);
-  });
-}
-
-// Fungsi periksa jawaban
-function checkAnswers() {
-  const currentQuestions = soalAIK.slice(currentIndex, currentIndex + 10);
-  currentQuestions.forEach((soal, index) => {
-    const radios = document.getElementsByName(`question-${index}`);
-    let selected = null;
-    radios.forEach(r => {
-      if (r.checked) selected = r.value;
-    });
-    answers.push(selected);
-    if (selected === soal.answer) score += 2;
-  });
-}
-
-// Submit soal per halaman
-submitBtn.addEventListener("click", () => {
-  checkAnswers();
-  currentIndex += 10;
-
-  if (currentIndex >= soalAIK.length || leftPage) {
-    showScore();
-  } else {
-    displayQuestions();
-  }
+// Tampilkan nama siswa
+studentNames.forEach(name => {
+  const opt = document.createElement("option");
+  opt.value = name;
+  opt.textContent = name;
+  nameSelect.appendChild(opt);
 });
 
-// Tampilkan skor akhir
-function showScore() {
-  quizContainer.style.display = "none";
-  scoreDiv.style.display = "block";
-
-  const finalScore = leftPage ? 0 : score;
-  scoreDiv.innerHTML = `<h2>Skor Anda: ${finalScore} dari 100</h2>`;
-
-  // Simpan ke Firebase
-  if (selectedName) {
-    set(ref(db, `nilai/${selectedName}`), {
-      AIK: finalScore
-    });
-  }
-}
-
-// Tombol mulai
-document.getElementById("start-btn").addEventListener("click", () => {
-  selectedName = nameSelect.value;
-  if (!selectedName) {
-    alert("Silakan pilih nama terlebih dahulu.");
-    return;
-  }
-
-  startContainer.style.display = "none";
-  quizContainer.style.display = "block";
-  displayQuestions();
-});
-
-// Anti-cheating: keluar halaman/tab
+// Anti-cheating
+let hasBlurred = false;
 window.onblur = () => {
-  if (!leftPage && quizContainer.style.display === "block") {
-    leftPage = true;
-    alert("Anda keluar dari halaman! Nilai Anda akan menjadi 0.");
-    showScore();
+  if (!hasBlurred) {
+    hasBlurred = true;
+    hasCheated = true;
+    alert("Kamu meninggalkan halaman! Nilai langsung 0.");
+    endQuiz();
   }
 };
+
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden && !hasBlurred) {
+    hasBlurred = true;
+    hasCheated = true;
+    alert("Kamu membuka tab lain! Nilai langsung 0.");
+    endQuiz();
+  }
+});
+
+// Mulai kuis
+startBtn.addEventListener("click", () => {
+  selectedStudent = nameSelect.value;
+  if (!selectedStudent) {
+    alert("Silakan pilih nama siswa.");
+    return;
+  }
+  document.getElementById("start-container").style.display = "none";
+  quizContainer.style.display = "block";
+  renderQuestions();
+});
+
+window.nextPage = function () {
+  saveAnswers();
+  currentPage++;
+  if (currentPage * 10 >= soalAIK.length) {
+    endQuiz();
+  } else {
+    renderQuestions();
+  }
+};
+
+function renderQuestions() {
+  soalContainer.innerHTML = "";
+  const start = currentPage * 10;
+  const end = Math.min(start + 10, soalAIK.length);
+
+  soalAIK.slice(start, end).forEach((q, i) => {
+    const idx = start + i;
+    const div = document.createElement("div");
+    div.className = "question";
+    div.innerHTML = `<p><b>${idx + 1}. ${q.question}</b></p>` +
+      Object.entries(q.options).map(([k, v]) => `
+        <label><input type="radio" name="q${idx}" value="${k}" ${answers[idx] === k ? "checked" : ""}>
+        ${k.toUpperCase()}. ${v}</label><br>
+      `).join("");
+    soalContainer.appendChild(div);
+  });
+}
+
+function saveAnswers() {
+  const start = currentPage * 10;
+  const end = Math.min(start + 10, soalAIK.length);
+
+  for (let i = start; i < end; i++) {
+    const selected = document.querySelector(`input[name="q${i}"]:checked`);
+    answers[i] = selected ? selected.value : null;
+  }
+}
+
+function endQuiz() {
+  saveAnswers(); // pastikan jawaban halaman terakhir tersimpan
+  quizContainer.style.display = "none";
+  resultScreen.style.display = "block";
+
+  let score = 0;
+  if (!hasCheated) {
+    soalAIK.forEach((s, i) => {
+      if (answers[i] === s.answer) score += 2;
+    });
+  }
+
+  scoreDisplay.textContent = score;
+
+  // Simpan nilai ke Firebase
+  const studentRef = doc(db, "nilai", selectedStudent);
+  setDoc(studentRef, { AIK: score }, { merge: true })
+    .then(() => console.log("Nilai disimpan"))
+    .catch(err => console.error("Gagal menyimpan nilai:", err));
+}
