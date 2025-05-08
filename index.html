@@ -1,29 +1,34 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Kuis AIK Tapak Suci</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <div id="start-container">
-    <h2>Masukkan Nama Siswa</h2>
+    <h2>Kuis AIK Tapak Suci</h2>
+    <label for="student-name">Pilih Nama Siswa:</label>
     <select id="student-name">
       <option value="">-- Pilih Nama --</option>
     </select>
+    <br><br>
     <button id="start-btn">Mulai</button>
   </div>
 
   <div id="quiz-container" style="display: none;">
-    <div id="questions"></div>
-    <button id="submit-btn">Lanjut</button>
+    <div id="question-container"></div>
+    <br>
+    <button onclick="nextPage()">Selanjutnya</button>
   </div>
 
-  <div id="score" style="display: none;"></div>
+  <div id="result-screen" style="display: none;">
+    <h2>Hasil Kuis</h2>
+    <p>Nilai Anda: <span id="score"></span></p>
+  </div>
 
-  <!-- Firebase SDK -->
-  <script src="data.js"></script>
+  <script type="module" src="data.js"></script>
   <script type="module" src="script.js"></script>
 </body>
 </html>
