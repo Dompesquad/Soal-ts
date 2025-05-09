@@ -8,7 +8,7 @@ export const studentNames = [
   "Farhan Sumayyah .Ar", "Fika Nur Aulia", "Khumairah", "M.Nasrul R", "M.Zain Nurichsan",
   "Marsya Sri Aulia", "Muh. Ilyas. M", "Muh. Wahyu Nur Ilahi", "Muh.Ifdal Al Amin", "Muhammad Ikram",
   "Nattan Alghi Fahri", "Nur Islamia Arwani", "Nur Rahmah", "Nursalam", "Riska", "Riska Arfah",
-  "Siti Hawa. M", "Siti Magfirah Jumakari", "Vira Damayanti", "Wahyullah Pratama", "Yatmi", "ZFB"
+  "Siti Hawa. M", "Siti Magfirah Jumakari", "Vira Damayanti", "Wahyullah Pratama", "Yatmi"
 ];
 
 export const soalAIK = [
